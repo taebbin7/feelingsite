@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>너의 기분은 어떠니?2 (How are you feeling?)</title>
+<title>너의 기분은 어떠니? (How are you feeling?)</title>
 <style>
   html, body {
     height: 100%;
@@ -38,7 +38,15 @@
     padding: 20px;
     box-shadow: 0 10px 30px rgba(0,0,0,.12);
     position: relative;
-    z-index: 2; /* 비와 해보다 위/아래 조정: 비(1), 카드(2), 해(3)로 갈 거라 해는 더 위로 줄 예정 */
+    z-index: 2;
+    transition: opacity .4s ease, transform .4s ease; /* 표시판 사라질 때 애니메이션 */
+  }
+
+  /* Enter를 누르면 카드 숨기기 */
+  .card.hidden {
+    opacity: 0;
+    transform: translateY(10px) scale(.96);
+    pointer-events: none;
   }
 
   h1 {
@@ -127,8 +135,8 @@
   /* 해 (positive일 때 왼쪽 상단에 등장) */
   .sun {
     position: fixed;
-    top: -80px;   /* 시작은 화면 바깥 위쪽 */
-    left: -80px;  /* 시작은 화면 바깥 왼쪽 */
+    top: -80px;
+    left: -80px;
     width: 140px;
     height: 140px;
     border-radius: 50%;
@@ -146,7 +154,6 @@
     z-index: 3;
   }
 
-  /* 살짝 흔들리는 빛 퍼짐 애니메이션 */
   @keyframes sunPulse {
     0% {
       box-shadow:
@@ -168,11 +175,118 @@
     }
   }
 
-  /* body.pos일 때 sun이 부드럽게 안쪽으로 내려와서 나타남 */
   body.pos .sun {
     opacity: 1;
     transform: translate(20px,20px) scale(1);
     animation: sunPulse 2.5s ease-in-out infinite;
+  }
+
+  /* ===== 우산 (부정 감정 + 스페이스바) ===== */
+  .umbrella {
+    position: fixed;
+    width: 40vmin;
+    height: 40vmin; /* 화면의 1/4 근처 크기 */
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 2;
+    display: none;
+  }
+
+  /* 반원 모양 캐노피 */
+  .umbrella-canopy {
+    position: absolute;
+    width: 100%;
+    height: 50%;
+    top: 15%;
+    left: 0;
+    background: linear-gradient(90deg, #ff6b81, #ffaf40, #ff6b81);
+    border-radius: 50% 50% 0 0;
+    box-shadow: 0 15px 35px rgba(0,0,0,.25);
+    overflow: hidden;
+  }
+
+  /* 아래쪽 물결무늬 */
+  .umbrella-canopy::after {
+    content: "";
+    position: absolute;
+    bottom: -30%;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    background:
+      radial-gradient(circle at 10% 0, #ff6b81 0 60%, transparent 61%) 0 0/33.3% 100% repeat-x;
+  }
+
+  /* 우산대 */
+  .umbrella-stick {
+    position: absolute;
+    width: 4px;
+    height: 40%;
+    background: #4b3b2b;
+    left: 50%;
+    top: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* 손잡이(J자 모양) */
+  .umbrella-hook {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    width: 18%;
+    height: 18%;
+    border: 4px solid #4b3b2b;
+    border-top-color: transparent;
+    border-left-color: transparent;
+    border-radius: 50%;
+    transform: translateX(-45%) rotate(15deg);
+  }
+
+  /* ===== 풍선 (긍정 감정 + 스페이스바) ===== */
+  .balloon {
+    position: fixed;
+    width: 30px;
+    height: 40px;
+    border-radius: 50% 50% 45% 45%;
+    background: #ff6b6b;
+    box-shadow: 0 6px 14px rgba(0,0,0,.25);
+    pointer-events: none;
+    z-index: 3;
+    animation: floatUp 6s ease-out forwards;
+  }
+
+  /* 반짝이는 하이라이트 */
+  .balloon::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 9px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.7);
+    filter: blur(0.5px);
+  }
+
+  /* 풍선 끈 */
+  .balloon::before {
+    content: "";
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    width: 1px;
+    height: 24px;
+    background: rgba(60,60,60,0.7);
+    transform: translateX(-50%);
+  }
+
+  @keyframes floatUp {
+    0%   { transform: translateY(0) translateX(0); opacity: 0; }
+    10%  { opacity: 1; }
+    50%  { transform: translateY(-60vh) translateX(-10px); }
+    100% { transform: translateY(-120vh) translateX(10px); opacity: 0; }
   }
 </style>
 </head>
@@ -204,6 +318,13 @@
   <!-- 해 -->
   <div class="sun" id="sun" aria-hidden="true"></div>
 
+  <!-- 우산 -->
+  <div class="umbrella" id="umbrella" aria-hidden="true">
+    <div class="umbrella-canopy"></div>
+    <div class="umbrella-stick"></div>
+    <div class="umbrella-hook"></div>
+  </div>
+
 <script>
   // ===== DOM refs =====
   const body = document.body;
@@ -213,6 +334,11 @@
   const extraEl = document.getElementById('extraMessage');
   const rainEl = document.getElementById('rain');
   const sunEl = document.getElementById('sun');
+  const card = document.querySelector('.card');
+  const umbrellaEl = document.getElementById('umbrella');
+
+  // 현재 감정 상태 저장 (pos / neg / neutral)
+  let currentSentiment = 'neutral';
 
   // ===== Web Audio context & utils =====
   let audioCtx = null;
@@ -226,10 +352,8 @@
     }
   }
 
-  // fade out placeholder (미래에 여러 소스 추적하고 stop 하고 싶으면 여기서 하면 됨)
   function fadeOutAll() {
-    // 현재 구조에서는 각 사운드가 자기 gain envelope으로 알아서 끝나므로
-    // 따로 전역 stop은 안 해도 돼.
+    // 각 사운드는 자기 envelope으로 끝나므로 비워둠
   }
 
   function playPositive() {
@@ -239,7 +363,6 @@
     master.gain.value = 0;
     master.connect(audioCtx.destination);
 
-    // 짧은 상행 3음 (도-미-솔)
     [261.63, 329.63, 392.00].forEach((f, i) => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
@@ -269,7 +392,6 @@
     const now = audioCtx.currentTime;
     const dur = 1.8;
 
-    // 화이트 노이즈 (비 소리 느낌)
     const bufferSize = Math.floor(audioCtx.sampleRate * dur);
     const buf = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = buf.getChannelData(0);
@@ -301,6 +423,45 @@
 
     src.start(now);
     src.stop(now + dur + 0.02);
+  }
+
+  // *** 새로 추가: 바람 소리 (중립 + 스페이스바) ***
+  function playWind() {
+    ensureAudio();
+    const now = audioCtx.currentTime;
+    const dur = 2.0;
+
+    const bufferSize = Math.floor(audioCtx.sampleRate * dur);
+    const buf = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+
+    // 흰색 노이즈
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.35;
+    }
+
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+
+    const bp = audioCtx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 600; // 바람 느낌 대역
+    bp.Q = 0.8;
+
+    const master = audioCtx.createGain();
+    master.gain.value = 0;
+
+    src.connect(bp);
+    bp.connect(master);
+    master.connect(audioCtx.destination);
+
+    // 서서히 불어왔다가 사라지는 느낌
+    master.gain.linearRampToValueAtTime(0.7, now + 0.3);
+    master.gain.linearRampToValueAtTime(0.4, now + 1.2);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    src.start(now);
+    src.stop(now + dur + 0.05);
   }
 
   // ===== 감정 단어 사전 =====
@@ -341,17 +502,14 @@
     const v = String(text || '').trim().toLowerCase();
     if (!v) return 'neutral';
 
-    // 완전 일치
     if (POS.has(v)) return 'pos';
     if (NEG.has(v)) return 'neg';
 
     const raw = String(text).trim();
 
-    // 부분 포함 키워드
     if (POS_HINT.some(k => v.includes(k) || raw.includes(k))) return 'pos';
     if (NEG_HINT.some(k => v.includes(k) || raw.includes(k))) return 'neg';
 
-    // 간단 부정 문양
     if (/\b(not|no|never|없음|아니|별로|그닥)\b/i.test(raw)) return 'neg';
 
     return 'neutral';
@@ -378,8 +536,37 @@
     extraEl.textContent = msg;
   }
 
+  // ===== 우산/풍선 관련 함수 =====
+  function showUmbrella() {
+    if (!umbrellaEl) return;
+    umbrellaEl.style.display = 'block';
+  }
+
+  function spawnBalloon() {
+    const b = document.createElement('div');
+    b.className = 'balloon';
+
+    // 랜덤 색상
+    const colors = ['#ff6b6b','#feca57','#48dbfb','#1dd1a1','#9b59b6','#e84393'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    b.style.backgroundColor = color;
+
+    // 시작 위치 (화면 아래쪽 랜덤)
+    const x = 10 + Math.random() * 80;   // 10~90vw 사이
+    b.style.left = x + 'vw';
+    b.style.top = '85vh';
+
+    // 애니메이션 시간도 랜덤
+    const dur = 5 + Math.random() * 3;   // 5~8초
+    b.style.animationDuration = dur + 's';
+
+    document.body.appendChild(b);
+    setTimeout(() => b.remove(), (dur + 1) * 1000);
+  }
+
   function applyMood(text) {
     const s = guessSentiment(text);
+    currentSentiment = s; // 스페이스바에서 사용
 
     if (s === 'pos') {
       body.classList.remove('neg');
@@ -392,7 +579,6 @@
       fadeOutAll();
       playPositive();
 
-      // 해는 body.pos에 의해 자동으로 나타남 (CSS 전환)
     } else if (s === 'neg') {
       body.classList.remove('pos');
       body.classList.add('neg');
@@ -415,10 +601,60 @@
     }
   }
 
+  // ===== 초기화(ESC) =====
+  function resetScene() {
+    currentSentiment = 'neutral';
+    body.classList.remove('pos','neg');
+    card.classList.remove('hidden');
+    input.value = '';
+    setStatus('기분을 한 단어로 적어보세요. 예: happy / sad / 행복 / 우울 …');
+    setExtra('');
+
+    // 비, 우산, 풍선 제거
+    rainEl.innerHTML = '';
+    umbrellaEl.style.display = 'none';
+    document.querySelectorAll('.balloon').forEach(b => b.remove());
+
+    fadeOutAll();
+  }
+
   // ===== 이벤트 =====
-  goBtn.addEventListener('click', () => applyMood(input.value));
+  goBtn.addEventListener('click', () => {
+    applyMood(input.value);
+    // 버튼 클릭 시에는 카드 유지
+  });
+
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') applyMood(input.value);
+    if (e.key === 'Enter') {
+      applyMood(input.value);
+      // *** 수정 포인트: 중립일 때는 카드가 안 사라지도록 ***
+      if (currentSentiment !== 'neutral') {
+        card.classList.add('hidden');
+      }
+    }
+  });
+
+  // 스페이스바 & ESC
+  document.addEventListener('keydown', (e) => {
+    // ESC → 처음화면으로 리셋
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      resetScene();
+      return;
+    }
+
+    // 스페이스바로 우산/풍선/바람 생성
+    if (e.code === 'Space') {
+      e.preventDefault(); // 스페이스 입력 방지
+      if (currentSentiment === 'neg') {
+        showUmbrella();       // 부정 감정 -> 우산
+      } else if (currentSentiment === 'pos') {
+        spawnBalloon();       // 긍정 감정 -> 풍선 한 개
+      } else {
+        // *** 중립 감정일 때: 바람 소리만 재생, 카드 그대로 유지 ***
+        playWind();
+      }
+    }
   });
 
   // ===== 초기 안내 =====
